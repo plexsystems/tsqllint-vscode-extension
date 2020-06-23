@@ -2,9 +2,9 @@
 
 import {
   createConnection, Diagnostic, DiagnosticSeverity, IConnection, InitializeResult, IPCMessageReader,
-  IPCMessageWriter, TextDocument, TextDocuments
+  IPCMessageWriter, TextDocuments, TextDocumentSyncKind
 } from "vscode-languageserver";
-
+import { TextDocument } from "vscode-languageserver-textdocument";
 import { ChildProcess } from "child_process";
 import { getCommands, registerFileErrors } from "./commands";
 import { ITsqlLintError, parseErrors } from "./parseError";
@@ -19,12 +19,12 @@ import * as uid from "uid-safe";
 const applicationRoot = path.parse(process.argv[1]);
 
 const connection: IConnection = createConnection(new IPCMessageReader(process), new IPCMessageWriter(process));
-const documents: TextDocuments = new TextDocuments();
+const documents = new TextDocuments(TextDocument);
 documents.listen(connection);
 
 connection.onInitialize((): InitializeResult => ({
   capabilities: {
-    textDocumentSync: documents.syncKind,
+    textDocumentSync: TextDocumentSyncKind.Incremental,
     codeActionProvider: true,
   },
 }));

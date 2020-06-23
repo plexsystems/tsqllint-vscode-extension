@@ -2,6 +2,7 @@
 
 import { https } from "follow-redirects";
 import * as decompress from "decompress";
+// @ts-ignore
 import * as decompressTargz from "decompress-targz";
 import * as fs from "fs";
 import * as os from "os";
@@ -114,13 +115,13 @@ export default class TSQLLintRuntimeHelper {
         });
       }).on("response", (res: any) => {
         if (res.statusCode !== 200) {
-          fs.unlink(downloadPath);
+          fs.unlinkSync(downloadPath);
           return reject(
             new Error(`There was a problem downloading the TSQLLint Runtime. Reload VS Code to try again`),
           );
         }
       }).on("error", (err: Error) => {
-        fs.unlink(downloadPath);
+        fs.unlinkSync(downloadPath);
         reject(err);
       });
     });
