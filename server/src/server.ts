@@ -2,12 +2,13 @@
 
 import {
   createConnection, Diagnostic, DiagnosticSeverity, IConnection, InitializeResult, IPCMessageReader,
-  IPCMessageWriter, TextDocument, TextDocuments} from "vscode-languageserver";
+  IPCMessageWriter, TextDocument, TextDocuments
+} from "vscode-languageserver";
 
 import { ChildProcess } from "child_process";
 import { getCommands, registerFileErrors } from "./commands";
 import { ITsqlLintError, parseErrors } from "./parseError";
-import TSQLLintRuntimeHelper from "./TSQLLintToolsHelper";
+import TSQLLintRuntimeHelper from "./TSQLLintRuntimeHelper";
 
 import { spawn } from "child_process";
 import * as fs from "fs";
@@ -21,86 +22,108 @@ const connection: IConnection = createConnection(new IPCMessageReader(process), 
 const documents: TextDocuments = new TextDocuments();
 documents.listen(connection);
 
-// let workspaceRoot: string;
-connection.onInitialize((/*params*/): InitializeResult => {
-  // workspaceRoot = params.rootPath;
-  return {
-    capabilities: {
-      textDocumentSync: documents.syncKind,
-      codeActionProvider: true,
-    },
-  };
-});
+connection.onInitialize((): InitializeResult => ({
+  capabilities: {
+    textDocumentSync: documents.syncKind,
+    codeActionProvider: true,
+  },
+}));
 
 connection.onCodeAction(getCommands);
 
-documents.onDidChangeContent((change) => {
-  ValidateBuffer(change.document);
+documents.onDidChangeContent((change: { document: TextDocument; }) => {
+  validateBuffer(change.document);
 });
 
 const toolsHelper: TSQLLintRuntimeHelper = new TSQLLintRuntimeHelper(applicationRoot.dir);
 
-function LintBuffer(fileUri: string, callback: ((error: Error, result: string[]) => void)): void {
-
-  toolsHelper.TSQLLintRuntime().then((toolsPath: string) => {
-    let childProcess: ChildProcess;
-
-    if (os.type() === "Darwin") {
-      childProcess = spawn(`${toolsPath}/osx-x64/TSQLLint.Console`, [fileUri]);
-    } else if (os.type() === "Linux") {
-      childProcess = spawn(`${toolsPath}/linux-x64/TSQLLint.Console`, [fileUri]);
-    } else if (os.type() === "Windows_NT") {
-      if (os.type() === "Windows_NT") {
-        if (process.arch === "ia32") {
-          childProcess = spawn(`${toolsPath}/win-x86/TSQLLint.Console.exe`, [fileUri]);
-        } else if (process.arch === "x64") {
-          childProcess = spawn(`${toolsPath}/win-x64/TSQLLint.Console.exe`, [fileUri]);
-        } else {
-          throw new Error(`Invalid Platform: ${os.type()}, ${process.arch}`);
-        }
-      }
-    } else {
-      throw new Error(`Invalid Platform: ${os.type()}, ${process.arch}`);
-    }
-
-    let result: string;
-    childProcess.stdout.on("data", (data: string) => {
-      result += data;
-    });
-
-    childProcess.stderr.on("data", (data: string) => {
-      console.log(`stderr: ${data}`);
-    });
-
-    childProcess.on("close", () => {
-      const list: string[] = result.split("\n");
-      const resultsArr: string[] = new Array();
-
-      list.forEach((element) => {
-        const index = element.indexOf("(");
-        if (index > 0) {
-          resultsArr.push(element.substring(index, element.length - 1));
-        }
-      });
-
-      callback(null, resultsArr);
-    });
+function lintBuffer(
+  fileUri: string,
+  callback: ((error: Error, result: string[]) => void)
+): void {
+  toolsHelper.tsqllintRuntime().then((toolsPath: string) => {
+    let childProcess = spawnChildProcess(toolsPath, fileUri);
+    parseChildProcessResult(childProcess, callback);
   }).catch((error: Error) => {
     throw error;
   });
 }
 
-function TempFilePath(textDocument: TextDocument) {
+function parseChildProcessResult(
+  childProcess: ChildProcess,
+  callback: (error: Error, result: string[]) => void
+) {
+  let result: string;
+  childProcess.stdout.on("data", (data: string) => {
+    result += data;
+  });
+
+  childProcess.stderr.on("data", (data: string) => {
+    console.error(`stderr: ${data}`);
+  });
+
+  childProcess.on("close", () => {
+    const list: string[] = result.split("\n");
+    const resultsArr: string[] = new Array();
+
+    list.forEach((element) => {
+      const index = element.indexOf("(");
+      if (index > 0) {
+        resultsArr.push(element.substring(index, element.length - 1));
+      }
+    });
+
+    callback(null, resultsArr);
+  });
+}
+
+function spawnChildProcess(
+  toolsPath: string,
+  fileUri: string
+) {
+  let childProcess: ChildProcess;
+
+  switch (os.type()) {
+    case "Darwin":
+      childProcess = spawn(`${toolsPath}/osx-x64/TSQLLint.Console`, [fileUri]);
+      break;
+    case "Linux":
+      childProcess = spawn(`${toolsPath}/linux-x64/TSQLLint.Console`, [fileUri]);
+      break;
+    case "Windows_NT":
+      switch (process.arch) {
+        case "ia32":
+          childProcess = spawn(`${toolsPath}/win-x86/TSQLLint.Console.exe`, [fileUri]);
+          break;
+        case "x64":
+          childProcess = spawn(`${toolsPath}/win-x64/TSQLLint.Console.exe`, [fileUri]);
+          break;
+        default:
+          throw new Error(`Invalid Platform: ${os.type()}, ${process.arch}`);
+      }
+      break;
+    default:
+      throw new Error(`Invalid Platform: ${os.type()}, ${process.arch}`);
+  }
+
+  return childProcess;
+}
+
+function buildTempFilePath(
+  textDocument: TextDocument
+) {
   const ext = path.extname(textDocument.uri) || ".sql";
   const name = uid.sync(18) + ext;
   return path.join(os.tmpdir(), name);
 }
 
-function ValidateBuffer(textDocument: TextDocument): void {
-  const tempFilePath: string = TempFilePath(textDocument);
+function validateBuffer(
+  textDocument: TextDocument
+): void {
+  const tempFilePath: string = buildTempFilePath(textDocument);
   fs.writeFileSync(tempFilePath, textDocument.getText());
 
-  LintBuffer(tempFilePath, (error: Error, lintErrorStrings: string[]) => {
+  lintBuffer(tempFilePath, (error: Error, lintErrorStrings: string[]) => {
     if (error) {
       registerFileErrors(textDocument, []);
       throw error;
@@ -119,6 +142,7 @@ function ValidateBuffer(textDocument: TextDocument): void {
         source: `TSQLLint: ${lintError.rule}`,
       };
     }
+
     fs.unlinkSync(tempFilePath);
   });
 }
