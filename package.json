@@ -1,10 +1,10 @@
 {
   "name": "tsqllint",
   "description": "A VS Code Extension For TSQLLint",
-  "author": "Nathan Boyd",
+  "author": "Plex Systems, Inc.",
   "license": "MIT",
-  "version": "1.3.0",
-  "publisher": "tsqllint",
+  "version": "2.0.0",
+  "publisher": "plexsystems",
   "categories": [
     "Linters"
   ],
@@ -49,7 +49,7 @@
     "@types/mocha": "^2.2.42",
     "@types/node": "^6.0.88",
     "conventional-changelog": "^2.0.1",
-    "release-it": "^7.4.7",
+    "release-it": "^13.6.3",
     "standard": "^11.0.1",
     "tslint": "^5.9.1",
     "typescript": "^2.5.2",
