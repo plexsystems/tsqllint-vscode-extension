@@ -42,7 +42,7 @@ function lintBuffer(
   callback: ((error: Error, result: string[]) => void)
 ): void {
   toolsHelper.tsqllintRuntime().then((toolsPath: string) => {
-    let childProcess = spawnChildProcess(toolsPath, fileUri);
+    const childProcess = spawnChildProcess(toolsPath, fileUri);
     parseChildProcessResult(childProcess, callback);
   }).catch((error: Error) => {
     throw error;
