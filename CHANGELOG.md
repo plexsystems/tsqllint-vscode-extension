@@ -3,6 +3,7 @@
 ## [2.0.0](https://github.com/plexsystems/tsqllint-vscode-extension/tree/v2.0.0) (2020-06-29)
 ### Changed
 * Create Plex fork
+* Update npm dependencies to latest versions
 
 ### Fixed
 * Clamp minimum line number index to 0
