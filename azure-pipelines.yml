@@ -1,0 +1,7 @@
+pool: Plex Hosted Ubuntu 1604
+
+steps:
+  - script: npm run lint
+  - script: npm run compile
+  - script: vsce package
+  - publish: "**/*.vsix"
