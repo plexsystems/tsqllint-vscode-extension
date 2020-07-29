@@ -22,13 +22,13 @@ export function parseErrors(docText: string, errorStrings: string[]): ITsqlLintE
 
     const range: Range = {
       start: { line, character: colStart },
-      end: { line, character: colEnd },
+      end: { line, character: colEnd }
     };
 
     return {
       range,
       message: validationError[2].trim(),
-      rule: validationError[1].trim(),
+      rule: validationError[1].trim()
     };
   }
 }

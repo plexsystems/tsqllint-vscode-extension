@@ -1,8 +1,15 @@
 "use strict";
 
 import {
-  createConnection, Diagnostic, DiagnosticSeverity, IConnection, InitializeResult, IPCMessageReader,
-  IPCMessageWriter, TextDocuments, TextDocumentSyncKind
+  createConnection,
+  Diagnostic,
+  DiagnosticSeverity,
+  IConnection,
+  InitializeResult,
+  IPCMessageReader,
+  IPCMessageWriter,
+  TextDocuments,
+  TextDocumentSyncKind
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { ChildProcess } from "child_process";
@@ -22,37 +29,36 @@ const connection: IConnection = createConnection(new IPCMessageReader(process), 
 const documents = new TextDocuments(TextDocument);
 documents.listen(connection);
 
-connection.onInitialize((): InitializeResult => ({
-  capabilities: {
-    textDocumentSync: TextDocumentSyncKind.Incremental,
-    codeActionProvider: true,
-  },
-}));
+connection.onInitialize(
+  (): InitializeResult => ({
+    capabilities: {
+      textDocumentSync: TextDocumentSyncKind.Incremental,
+      codeActionProvider: true
+    }
+  })
+);
 
 connection.onCodeAction(getCommands);
 
-documents.onDidChangeContent((change: { document: TextDocument; }) => {
+documents.onDidChangeContent((change: { document: TextDocument }) => {
   validateBuffer(change.document);
 });
 
 const toolsHelper: TSQLLintRuntimeHelper = new TSQLLintRuntimeHelper(applicationRoot.dir);
 
-function lintBuffer(
-  fileUri: string,
-  callback: ((error: Error, result: string[]) => void)
-): void {
-  toolsHelper.tsqllintRuntime().then((toolsPath: string) => {
-    const childProcess = spawnChildProcess(toolsPath, fileUri);
-    parseChildProcessResult(childProcess, callback);
-  }).catch((error: Error) => {
-    throw error;
-  });
+function lintBuffer(fileUri: string, callback: (error: Error, result: string[]) => void): void {
+  toolsHelper
+    .tsqllintRuntime()
+    .then((toolsPath: string) => {
+      const childProcess = spawnChildProcess(toolsPath, fileUri);
+      parseChildProcessResult(childProcess, callback);
+    })
+    .catch((error: Error) => {
+      throw error;
+    });
 }
 
-function parseChildProcessResult(
-  childProcess: ChildProcess,
-  callback: (error: Error, result: string[]) => void
-) {
+function parseChildProcessResult(childProcess: ChildProcess, callback: (error: Error, result: string[]) => void) {
   let result: string;
   childProcess.stdout.on("data", (data: string) => {
     result += data;
@@ -77,10 +83,7 @@ function parseChildProcessResult(
   });
 }
 
-function spawnChildProcess(
-  toolsPath: string,
-  fileUri: string
-) {
+function spawnChildProcess(toolsPath: string, fileUri: string) {
   let childProcess: ChildProcess;
 
   switch (os.type()) {
@@ -109,17 +112,13 @@ function spawnChildProcess(
   return childProcess;
 }
 
-function buildTempFilePath(
-  textDocument: TextDocument
-) {
+function buildTempFilePath(textDocument: TextDocument) {
   const ext = path.extname(textDocument.uri) || ".sql";
   const name = uid.sync(18) + ext;
   return path.join(os.tmpdir(), name);
 }
 
-function validateBuffer(
-  textDocument: TextDocument
-): void {
+function validateBuffer(textDocument: TextDocument): void {
   const tempFilePath: string = buildTempFilePath(textDocument);
   fs.writeFileSync(tempFilePath, textDocument.getText());
 
@@ -139,7 +138,7 @@ function validateBuffer(
         severity: DiagnosticSeverity.Error,
         range: lintError.range,
         message: lintError.message,
-        source: `TSQLLint: ${lintError.rule}`,
+        source: `TSQLLint: ${lintError.rule}`
       };
     }
 

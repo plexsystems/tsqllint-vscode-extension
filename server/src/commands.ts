@@ -4,7 +4,7 @@ import { Command, Position, TextDocument } from "vscode-languageserver/lib/main"
 import { ITsqlLintError } from "./parseError";
 
 interface IEdit {
-  range: { start: server.Position, end: server.Position };
+  range: { start: server.Position; end: server.Position };
   newText: string;
 }
 
@@ -26,16 +26,18 @@ export function registerFileErrors(file: TextDocument, errors: ITsqlLintError[])
     return {
       error,
       fileVersion: file.version,
-      disableLine: getDisableEdit(),
+      disableLine: getDisableEdit()
     };
 
     function getDisableEdit(): IEdit[] {
       const { rule } = error;
       const line = lines[start.line];
-      return [{
-        range: { start: { ...start, character: 0 }, end },
-        newText: `${space}/* tsqllint-disable ${rule} */\n${line}\n${space}/* tsqllint-enable ${rule} */\n`,
-      }];
+      return [
+        {
+          range: { start: { ...start, character: 0 }, end },
+          newText: `${space}/* tsqllint-disable ${rule} */\n${line}\n${space}/* tsqllint-enable ${rule} */\n`
+        }
+      ];
     }
   }
 }
@@ -43,7 +45,7 @@ export function registerFileErrors(file: TextDocument, errors: ITsqlLintError[])
 export function getCommands(params: CodeActionParams): Command[] {
   const commands = findCommands(params.textDocument.uri, params.range);
   return [
-    ...getDisableCommands(),
+    ...getDisableCommands()
     // TODO fix/fixall commands
     // TODO documentation commands
   ];
@@ -72,10 +74,7 @@ export function getCommands(params: CodeActionParams): Command[] {
   }
 
   function getDisableCommands(): Command[] {
-    return [
-      ...commands.map(toDisableCommand),
-      ...commands.map(toDisableForFileCommand),
-    ];
+    return [...commands.map(toDisableCommand), ...commands.map(toDisableForFileCommand)];
 
     function toDisableCommand(command: IDiagnosticCommands) {
       return server.Command.create(
@@ -83,7 +82,7 @@ export function getCommands(params: CodeActionParams): Command[] {
         "_tsql-lint.change",
         params.textDocument.uri,
         command.fileVersion,
-        command.disableLine,
+        command.disableLine
       );
     }
 
@@ -91,7 +90,7 @@ export function getCommands(params: CodeActionParams): Command[] {
       const pos = { line: 0, character: 0 };
       const edit: IEdit = {
         range: { start: pos, end: pos },
-        newText: `/* tsqllint-disable ${command.error.rule} */\n`,
+        newText: `/* tsqllint-disable ${command.error.rule} */\n`
       };
 
       return server.Command.create(
@@ -99,7 +98,7 @@ export function getCommands(params: CodeActionParams): Command[] {
         "_tsql-lint.change",
         params.textDocument.uri,
         command.fileVersion,
-        [edit],
+        [edit]
       );
     }
   }

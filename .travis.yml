@@ -1,18 +1,18 @@
 language: node_js
 
 node_js:
-- 'node'
+  - "node"
 
 os:
-- linux
+  - linux
 
 install:
-- npm install
+  - npm install
 
 script:
-- npm run lint
-- npm run compile
-- vsce package
+  - npm run lint
+  - npm run compile
+  - vsce package
 
 before_deploy:
   - export RELEASE_PKG_FILE=$(ls *.vsix)

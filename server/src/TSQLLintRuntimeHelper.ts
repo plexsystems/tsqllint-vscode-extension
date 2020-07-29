@@ -83,62 +83,65 @@ export default class TSQLLintRuntimeHelper {
 
       const file = fs.createWriteStream(downloadFilePath);
 
-      https.get(downloadUrl, (response: any) => {
-        const length = Number(response.headers["content-length"]);
-        response.pipe(file);
-        process.stdout.write("Downloading...");
+      https
+        .get(downloadUrl, (response: any) => {
+          const length = Number(response.headers["content-length"]);
+          response.pipe(file);
+          process.stdout.write("Downloading...");
 
-        if (!isNaN(length)) {
-          process.stdout.write(" [");
+          if (!isNaN(length)) {
+            process.stdout.write(" [");
 
-          const max = 60;
-          let char = 0;
-          let bytes = 0;
+            const max = 60;
+            let char = 0;
+            let bytes = 0;
 
-          response.on("data", (chunk: Buffer) => {
-            bytes += chunk.length;
-            const fill = Math.ceil((bytes / length) * max);
+            response.on("data", (chunk: Buffer) => {
+              bytes += chunk.length;
+              const fill = Math.ceil((bytes / length) * max);
 
-            for (let i = char; i < fill; i++) {
-              process.stdout.write("=");
-            }
+              for (let i = char; i < fill; i++) {
+                process.stdout.write("=");
+              }
 
-            char = fill;
+              char = fill;
+            });
+
+            response.on("end", () => process.stdout.write("]\n"));
+          }
+
+          file.on("finish", () => {
+            file.close();
+            resolve(downloadPath);
           });
-
-          response.on("end", () => process.stdout.write("]\n"));
-        }
-
-        file.on("finish", () => {
-          file.close();
-          resolve(downloadPath);
-        });
-      }).on("response", (res: any) => {
-        if (res.statusCode !== 200) {
+        })
+        .on("response", (res: any) => {
+          if (res.statusCode !== 200) {
+            fs.unlinkSync(downloadPath);
+            return reject(
+              new Error(`There was a problem downloading the TSQLLint Runtime. Reload VS Code to try again`)
+            );
+          }
+        })
+        .on("error", (err: Error) => {
           fs.unlinkSync(downloadPath);
-          return reject(
-            new Error(`There was a problem downloading the TSQLLint Runtime. Reload VS Code to try again`),
-          );
-        }
-      }).on("error", (err: Error) => {
-        fs.unlinkSync(downloadPath);
-        reject(err);
-      });
+          reject(err);
+        });
     });
   }
 
   private unzipRuntime(path: string, tsqllintInstallDirectory: string) {
     return new Promise((resolve, reject) => {
       decompress(path, `${tsqllintInstallDirectory}`, {
-        plugins: [
-          decompressTargz(),
-        ],
-      }).then(() => {
-        TSQLLintRuntimeHelper._tsqllintToolsPath = tsqllintInstallDirectory;
-        return resolve(tsqllintInstallDirectory);
-      }).catch((err: Error) => {
-        reject(err);
-      });
+        plugins: [decompressTargz()]
+      })
+        .then(() => {
+          TSQLLintRuntimeHelper._tsqllintToolsPath = tsqllintInstallDirectory;
+          return resolve(tsqllintInstallDirectory);
+        })
+        .catch((err: Error) => {
+          reject(err);
+        });
     });
   }
 }
