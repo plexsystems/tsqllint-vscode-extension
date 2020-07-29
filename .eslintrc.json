@@ -1,0 +1,7 @@
+{
+  "extends": ["plex-standards", "plex-standards/node", "plex-standards/typescript"],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "project": ["./client/tsconfig.json", "./server/tsconfig.json"]
+  }
+}
