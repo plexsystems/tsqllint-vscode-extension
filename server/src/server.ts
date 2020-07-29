@@ -12,16 +12,15 @@ import {
   TextDocumentSyncKind
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { ChildProcess } from "child_process";
-import { getCommands, registerFileErrors } from "./commands";
-import { ITsqlLintError, parseErrors } from "./parseError";
-import TSQLLintRuntimeHelper from "./TSQLLintRuntimeHelper";
+import { ChildProcess, spawn } from "child_process";
 
-import { spawn } from "child_process";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import * as uid from "uid-safe";
+import TSQLLintRuntimeHelper from "./TSQLLintRuntimeHelper";
+import { ITsqlLintError, parseErrors } from "./parseError";
+import { getCommands, registerFileErrors } from "./commands";
 
 const applicationRoot = path.parse(process.argv[1]);
 
@@ -70,7 +69,7 @@ function parseChildProcessResult(childProcess: ChildProcess, callback: (error: E
 
   childProcess.on("close", () => {
     const list: string[] = result.split("\n");
-    const resultsArr: string[] = new Array();
+    const resultsArr: string[] = [];
 
     list.forEach((element) => {
       const index = element.indexOf("(");

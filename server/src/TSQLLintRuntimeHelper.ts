@@ -8,7 +8,7 @@ import * as fs from "fs";
 import * as os from "os";
 
 export default class TSQLLintRuntimeHelper {
-  private static _tsqllintVersion: string = "v1.11.0";
+  private static readonly _tsqllintVersion = "v1.11.0";
   private static _applicationRootDirectory: string;
   private static _runTime: string;
   private static _tsqllintToolsPath: string;
@@ -46,7 +46,7 @@ export default class TSQLLintRuntimeHelper {
         return resolve(TSQLLintRuntimeHelper._tsqllintToolsPath);
       }
 
-      const tsqllintInstallDirectory: string = `${TSQLLintRuntimeHelper._applicationRootDirectory}/tsqllint`;
+      const tsqllintInstallDirectory = `${TSQLLintRuntimeHelper._applicationRootDirectory}/tsqllint`;
       if (fs.existsSync(`${tsqllintInstallDirectory}/${TSQLLintRuntimeHelper._runTime}`)) {
         TSQLLintRuntimeHelper._tsqllintToolsPath = tsqllintInstallDirectory;
         return resolve(TSQLLintRuntimeHelper._tsqllintToolsPath);
@@ -69,10 +69,10 @@ export default class TSQLLintRuntimeHelper {
   }
 
   private static downloadRuntime(installDirectory: string): Promise<string> {
-    const urlBase: string = `https://github.com/tsqllint/tsqllint/releases/download/${this._tsqllintVersion}`;
-    const downloadUrl: string = `${urlBase}/${TSQLLintRuntimeHelper._runTime}.tgz`;
-    const downloadFilePath: string = `${installDirectory}/${TSQLLintRuntimeHelper._runTime}.tgz`;
-    const downloadPath: string = `${installDirectory}/${TSQLLintRuntimeHelper._runTime}.tgz`;
+    const urlBase = `https://github.com/tsqllint/tsqllint/releases/download/${this._tsqllintVersion}`;
+    const downloadUrl = `${urlBase}/${TSQLLintRuntimeHelper._runTime}.tgz`;
+    const downloadFilePath = `${installDirectory}/${TSQLLintRuntimeHelper._runTime}.tgz`;
+    const downloadPath = `${installDirectory}/${TSQLLintRuntimeHelper._runTime}.tgz`;
 
     return new Promise((resolve, reject) => {
       console.log(`Installing TSQLLint Runtime: ${downloadUrl}`);
@@ -84,7 +84,7 @@ export default class TSQLLintRuntimeHelper {
       const file = fs.createWriteStream(downloadFilePath);
 
       https
-        .get(downloadUrl, (response: any) => {
+        .get(downloadUrl, (response: unknown) => {
           const length = Number(response.headers["content-length"]);
           response.pipe(file);
           process.stdout.write("Downloading...");
@@ -115,7 +115,7 @@ export default class TSQLLintRuntimeHelper {
             resolve(downloadPath);
           });
         })
-        .on("response", (res: any) => {
+        .on("response", (res: unknown) => {
           if (res.statusCode !== 200) {
             fs.unlinkSync(downloadPath);
             return reject(
