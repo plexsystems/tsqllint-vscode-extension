@@ -7,7 +7,7 @@
   "publisher": "plexsystems",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tsqllint/tsqllint-vscode-extension"
+    "url": "https://github.com/plexsystems/tsqllint-vscode-extension"
   },
   "engines": {
     "node": "*"
