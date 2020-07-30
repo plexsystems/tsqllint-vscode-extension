@@ -16,15 +16,15 @@ interface IDiagnosticCommands {
 
 const commandStore: { [fileUri: string]: IDiagnosticCommands[] } = {};
 
-export const registerFileErrors = (file: TextDocument, errors: ITsqlLintError[]) => {
+export const registerFileErrors = (file: TextDocument, tsqlLintErrors: ITsqlLintError[]) => {
   const lines = file.getText().split("\n");
 
-  const toDiagnosticCommands = (error: ITsqlLintError): IDiagnosticCommands => {
-    const { start, end } = error.range;
+  const toDiagnosticCommands = (tsqlLintError: ITsqlLintError): IDiagnosticCommands => {
+    const { start, end } = tsqlLintError.range;
     const space = /^\s*/.exec(lines[start.line])[0];
 
     const getDisableEdit = (): IEdit[] => {
-      const { rule } = error;
+      const { rule } = tsqlLintError;
       const line = lines[start.line];
       return [
         {
@@ -35,13 +35,13 @@ export const registerFileErrors = (file: TextDocument, errors: ITsqlLintError[])
     };
 
     return {
-      error,
+      error: tsqlLintError,
       fileVersion: file.version,
       disableLine: getDisableEdit()
     };
   };
 
-  commandStore[file.uri] = errors.map(toDiagnosticCommands);
+  commandStore[file.uri] = tsqlLintErrors.map(toDiagnosticCommands);
 };
 
 export const getCommands = (params: CodeActionParams): Command[] => {

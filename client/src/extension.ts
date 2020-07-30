@@ -8,8 +8,8 @@ import * as vscode from "vscode";
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from "vscode-languageclient";
 
 export const activate = (context: ExtensionContext) => {
-  const debugOptions = { execArgv: ["--nolazy", "--inspect=6009"] };
   const serverModule = context.asAbsolutePath(path.join("server", "out", "server.js"));
+  const debugOptions = { execArgv: ["--nolazy", "--inspect=6009"] };
 
   const serverOptions: ServerOptions = {
     run: { module: serverModule, transport: TransportKind.ipc },
@@ -27,27 +27,25 @@ export const activate = (context: ExtensionContext) => {
   const client = new LanguageClient("tsqllint", "TSQLLint", serverOptions, clientOptions);
   client.registerProposedFeatures();
 
-  const applyTextEdits = (uri: string, documentVersion: number, edits: vscode.TextEdit[]) => {
+  const applyTextEdits = async (uri: string, documentVersion: number, edits: vscode.TextEdit[]) => {
     const textEditor = vscode.window.activeTextEditor;
     if (textEditor !== undefined && textEditor.document.uri.toString() === uri) {
       if (textEditor.document.version !== documentVersion) {
-        void vscode.window.showInformationMessage(`SqlLint fixes are outdated and can't be applied to the document.`);
+        await vscode.window.showInformationMessage(`SqlLint fixes are outdated and can't be applied to the document.`);
       }
 
-      void textEditor
-        .edit((mutator) => {
-          for (const edit of edits) {
-            mutator.replace(client.protocol2CodeConverter.asRange(edit.range), edit.newText);
-          }
-        })
-        .then((success) => {
-          if (!success) {
-            void vscode.window.showErrorMessage(
-              "Failed to apply SqlLint fixes to the document. " +
-                "Please consider opening an issue with steps to reproduce."
-            );
-          }
-        });
+      const success = await textEditor.edit((mutator) => {
+        for (const edit of edits) {
+          mutator.replace(client.protocol2CodeConverter.asRange(edit.range), edit.newText);
+        }
+      });
+
+      if (!success) {
+        await vscode.window.showErrorMessage(
+          "Failed to apply SqlLint fixes to the document. " +
+            "Please consider opening an issue with steps to reproduce."
+        );
+      }
     }
   };
 

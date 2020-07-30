@@ -1,12 +1,32 @@
-/* eslint-disable no-console */
 "use strict";
-
 import { https } from "follow-redirects";
 import * as decompress from "decompress";
 // @ts-ignore
 import * as decompressTargz from "decompress-targz";
 import * as fs from "fs";
 import * as os from "os";
+import { IncomingMessage } from "http";
+
+const writeProgressBar = (response: IncomingMessage, length: number) => {
+  process.stdout.write(" [");
+
+  const max = 60;
+  let char = 0;
+  let bytes = 0;
+
+  response.on("data", (chunk: Buffer) => {
+    bytes += chunk.length;
+    const fill = Math.ceil((bytes / length) * max);
+
+    for (let i = char; i < fill; i++) {
+      process.stdout.write("=");
+    }
+
+    char = fill;
+  });
+
+  response.on("end", () => process.stdout.write("]\n"));
+};
 
 export class TSQLLintRuntimeHelper {
   private readonly _tsqllintVersion = "v1.11.0";
@@ -41,7 +61,7 @@ export class TSQLLintRuntimeHelper {
     }
   }
 
-  public async tsqllintRuntime(): Promise<string> {
+  public async initializeTsqllintRuntime(): Promise<string> {
     if (this._tsqllintToolsPath) {
       return this._tsqllintToolsPath;
     }
@@ -53,10 +73,11 @@ export class TSQLLintRuntimeHelper {
     }
 
     const path = await this._downloadRuntime(tsqllintInstallDirectory);
-    const installDir = await this._unzipRuntime(path, tsqllintInstallDirectory);
-    console.log("Installation of TSQLLint Runtime Complete");
+    await decompress(path, tsqllintInstallDirectory, { plugins: [decompressTargz()] });
+    process.stdout.write("Installation of TSQLLint Runtime Complete\n");
 
-    return installDir;
+    this._tsqllintToolsPath = tsqllintInstallDirectory;
+    return tsqllintInstallDirectory;
   }
 
   private _downloadRuntime(installDirectory: string): Promise<string> {
@@ -65,7 +86,7 @@ export class TSQLLintRuntimeHelper {
     const downloadFilePath = `${installDirectory}/${this._runTime}.tgz`;
 
     return new Promise((resolve, reject) => {
-      console.log(`Installing TSQLLint Runtime: ${downloadUrl}`);
+      process.stdout.write(`Installing TSQLLint Runtime: ${downloadUrl}\n`);
 
       if (!fs.existsSync(installDirectory)) {
         fs.mkdirSync(installDirectory);
@@ -74,30 +95,13 @@ export class TSQLLintRuntimeHelper {
       const file = fs.createWriteStream(downloadFilePath);
 
       https
-        .get(downloadUrl, (response) => {
-          const length = Number(response.headers["content-length"]);
-          response.pipe(file);
+        .get(downloadUrl, (res) => {
+          const length = Number(res.headers["content-length"]);
+          res.pipe(file);
           process.stdout.write("Downloading...");
 
           if (!isNaN(length)) {
-            process.stdout.write(" [");
-
-            const max = 60;
-            let char = 0;
-            let bytes = 0;
-
-            response.on("data", (chunk: Buffer) => {
-              bytes += chunk.length;
-              const fill = Math.ceil((bytes / length) * max);
-
-              for (let i = char; i < fill; i++) {
-                process.stdout.write("=");
-              }
-
-              char = fill;
-            });
-
-            response.on("end", () => process.stdout.write("]\n"));
+            writeProgressBar(res, length);
           }
 
           file.on("finish", () => {
@@ -106,26 +110,15 @@ export class TSQLLintRuntimeHelper {
           });
         })
         .on("response", (res) => {
-          if (res.statusCode === 200) {
-            return resolve();
-          } else {
+          if (res.statusCode !== 200) {
             fs.unlinkSync(downloadFilePath);
-            return reject(
-              new Error(`There was a problem downloading the TSQLLint Runtime. Reload VS Code to try again`)
-            );
+            reject(new Error("There was a problem downloading the TSQLLint Runtime. Reload VS Code to try again."));
           }
         })
-        .on("error", (err: Error) => {
+        .on("error", (err) => {
           fs.unlinkSync(downloadFilePath);
           reject(err);
         });
     });
-  }
-
-  private async _unzipRuntime(path: string, tsqllintInstallDirectory: string): Promise<string> {
-    await decompress(path, tsqllintInstallDirectory, { plugins: [decompressTargz()] });
-    this._tsqllintToolsPath = tsqllintInstallDirectory;
-
-    return tsqllintInstallDirectory;
   }
 }

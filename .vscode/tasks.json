@@ -7,22 +7,24 @@
       "problemMatcher": []
     },
     {
+      "label": "compile:client",
       "type": "npm",
       "script": "compile:client",
       "group": "build",
       "presentation": {
-        "panel": "dedicated",
-        "reveal": "never"
+        "panel": "shared",
+        "reveal": "always"
       },
       "problemMatcher": ["$tsc"]
     },
     {
+      "label": "compile:server",
       "type": "npm",
       "script": "compile:server",
       "group": "build",
       "presentation": {
-        "panel": "dedicated",
-        "reveal": "never"
+        "panel": "shared",
+        "reveal": "always"
       },
       "problemMatcher": ["$tsc"]
     },
@@ -36,6 +38,7 @@
       "problemMatcher": []
     },
     {
+      "label": "watch:client",
       "type": "npm",
       "script": "watch:client",
       "isBackground": true,
@@ -47,6 +50,7 @@
       "problemMatcher": ["$tsc-watch"]
     },
     {
+      "label": "watch:server",
       "type": "npm",
       "script": "watch:server",
       "isBackground": true,

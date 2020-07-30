@@ -75,8 +75,7 @@ const parseChildProcessResult = (childProcess: ChildProcess, callback: (error: E
   });
 
   childProcess.stderr.on("data", (data: string) => {
-    // eslint-disable-next-line no-console
-    console.error(`stderr: ${data}`);
+    process.stderr.write(`stderr: ${data}\n`);
   });
 
   childProcess.on("close", () => {
@@ -96,7 +95,7 @@ const parseChildProcessResult = (childProcess: ChildProcess, callback: (error: E
 
 const lintBuffer = (fileUri: string, callback: (error: Error, result: string[]) => void): void => {
   toolsHelper
-    .tsqllintRuntime()
+    .initializeTsqllintRuntime()
     .then((toolsPath: string) => {
       const childProcess = spawnChildProcess(toolsPath, fileUri);
       parseChildProcessResult(childProcess, callback);
@@ -133,8 +132,8 @@ const validateBuffer = (textDocument: TextDocument): void => {
 
     const errors = parseErrors(textDocument.getText(), lintErrorStrings);
     registerFileErrors(textDocument, errors);
-    const diagnostics = errors.map(toDiagnostic);
 
+    const diagnostics = errors.map(toDiagnostic);
     connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 
     fs.unlinkSync(tempFilePath);
