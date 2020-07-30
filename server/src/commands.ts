@@ -16,20 +16,14 @@ interface IDiagnosticCommands {
 
 const commandStore: { [fileUri: string]: IDiagnosticCommands[] } = {};
 
-export function registerFileErrors(file: TextDocument, errors: ITsqlLintError[]) {
+export const registerFileErrors = (file: TextDocument, errors: ITsqlLintError[]) => {
   const lines = file.getText().split("\n");
-  commandStore[file.uri] = errors.map(toDiagnosticCommands);
 
-  function toDiagnosticCommands(error: ITsqlLintError): IDiagnosticCommands {
+  const toDiagnosticCommands = (error: ITsqlLintError): IDiagnosticCommands => {
     const { start, end } = error.range;
-    const space = lines[start.line].match(/^\s*/)[0];
-    return {
-      error,
-      fileVersion: file.version,
-      disableLine: getDisableEdit()
-    };
+    const space = /^\s*/.exec(lines[start.line])[0];
 
-    function getDisableEdit(): IEdit[] {
+    const getDisableEdit = (): IEdit[] => {
       const { rule } = error;
       const line = lines[start.line];
       return [
@@ -38,20 +32,28 @@ export function registerFileErrors(file: TextDocument, errors: ITsqlLintError[])
           newText: `${space}/* tsqllint-disable ${rule} */\n${line}\n${space}/* tsqllint-enable ${rule} */\n`
         }
       ];
-    }
-  }
-}
+    };
 
-export function getCommands(params: CodeActionParams): Command[] {
-  const commands = findCommands(params.textDocument.uri, params.range);
-  return [
-    ...getDisableCommands()
-    // TODO fix/fixall commands
-    // TODO documentation commands
-  ];
+    return {
+      error,
+      fileVersion: file.version,
+      disableLine: getDisableEdit()
+    };
+  };
 
-  function findCommands(fileUri: string, { start, end }: server.Range): IDiagnosticCommands[] {
-    const fileCommands = commandStore[fileUri] || [];
+  commandStore[file.uri] = errors.map(toDiagnosticCommands);
+};
+
+export const getCommands = (params: CodeActionParams): Command[] => {
+  const findCommands = (fileUri: string, { start, end }: server.Range): IDiagnosticCommands[] => {
+    const fileCommands = Object.prototype.hasOwnProperty.call(commandStore, fileUri) ? commandStore[fileUri] : [];
+
+    const comparePos = (a: Position, b: Position) => {
+      if (a.line !== b.line) {
+        return a.line - b.line;
+      }
+      return a.character - b.character;
+    };
 
     return fileCommands.filter(({ error }): boolean => {
       const eStart = error.range.start;
@@ -64,19 +66,12 @@ export function getCommands(params: CodeActionParams): Command[] {
       }
       return true;
     });
+  };
 
-    function comparePos(a: Position, b: Position) {
-      if (a.line !== b.line) {
-        return a.line - b.line;
-      }
-      return a.character - b.character;
-    }
-  }
+  const commands = findCommands(params.textDocument.uri, params.range);
 
-  function getDisableCommands(): Command[] {
-    return [...commands.map(toDisableCommand), ...commands.map(toDisableForFileCommand)];
-
-    function toDisableCommand(command: IDiagnosticCommands) {
+  const getDisableCommands = (): Command[] => {
+    const toDisableCommand = (command: IDiagnosticCommands) => {
       return server.Command.create(
         `Disable: ${command.error.rule} for this line`,
         "_tsql-lint.change",
@@ -84,9 +79,9 @@ export function getCommands(params: CodeActionParams): Command[] {
         command.fileVersion,
         command.disableLine
       );
-    }
+    };
 
-    function toDisableForFileCommand(command: IDiagnosticCommands) {
+    const toDisableForFileCommand = (command: IDiagnosticCommands) => {
       const pos = { line: 0, character: 0 };
       const edit: IEdit = {
         range: { start: pos, end: pos },
@@ -100,6 +95,14 @@ export function getCommands(params: CodeActionParams): Command[] {
         command.fileVersion,
         [edit]
       );
-    }
-  }
-}
+    };
+
+    return [...commands.map(toDisableCommand), ...commands.map(toDisableForFileCommand)];
+  };
+
+  return [
+    ...getDisableCommands()
+    // TODO fix/fixall commands
+    // TODO documentation commands
+  ];
+};

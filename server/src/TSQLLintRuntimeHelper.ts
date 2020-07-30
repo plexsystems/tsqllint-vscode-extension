@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 "use strict";
 
 import { https } from "follow-redirects";
@@ -7,29 +8,29 @@ import * as decompressTargz from "decompress-targz";
 import * as fs from "fs";
 import * as os from "os";
 
-export default class TSQLLintRuntimeHelper {
-  private static readonly _tsqllintVersion = "v1.11.0";
-  private static _applicationRootDirectory: string;
-  private static _runTime: string;
-  private static _tsqllintToolsPath: string;
+export class TSQLLintRuntimeHelper {
+  private readonly _tsqllintVersion = "v1.11.0";
+  private readonly _applicationRootDirectory: string;
+  private readonly _runTime: string;
+  private _tsqllintToolsPath: string;
 
-  constructor(applicationRootDirectory: string) {
-    TSQLLintRuntimeHelper._applicationRootDirectory = applicationRootDirectory;
+  public constructor(applicationRootDirectory: string) {
+    this._applicationRootDirectory = applicationRootDirectory;
 
     switch (os.type()) {
       case "Darwin":
-        TSQLLintRuntimeHelper._runTime = "osx-x64";
+        this._runTime = "osx-x64";
         break;
       case "Linux":
-        TSQLLintRuntimeHelper._runTime = "linux-x64";
+        this._runTime = "linux-x64";
         break;
       case "Windows_NT":
         switch (process.arch) {
           case "ia32":
-            TSQLLintRuntimeHelper._runTime = "win-x86";
+            this._runTime = "win-x86";
             break;
           case "x64":
-            TSQLLintRuntimeHelper._runTime = "win-x64";
+            this._runTime = "win-x64";
             break;
           default:
             throw new Error(`Invalid Platform: ${os.type()}, ${process.arch}`);
@@ -42,21 +43,21 @@ export default class TSQLLintRuntimeHelper {
 
   public tsqllintRuntime(): Promise<string> {
     return new Promise<string>((resolve, reject) => {
-      if (TSQLLintRuntimeHelper._tsqllintToolsPath) {
-        return resolve(TSQLLintRuntimeHelper._tsqllintToolsPath);
+      if (this._tsqllintToolsPath) {
+        return resolve(this._tsqllintToolsPath);
       }
 
-      const tsqllintInstallDirectory = `${TSQLLintRuntimeHelper._applicationRootDirectory}/tsqllint`;
-      if (fs.existsSync(`${tsqllintInstallDirectory}/${TSQLLintRuntimeHelper._runTime}`)) {
-        TSQLLintRuntimeHelper._tsqllintToolsPath = tsqllintInstallDirectory;
-        return resolve(TSQLLintRuntimeHelper._tsqllintToolsPath);
+      const tsqllintInstallDirectory = `${this._applicationRootDirectory}/tsqllint`;
+      if (fs.existsSync(`${tsqllintInstallDirectory}/${this._runTime}`)) {
+        this._tsqllintToolsPath = tsqllintInstallDirectory;
+        return resolve(this._tsqllintToolsPath);
       }
 
-      const download: Promise<string> = TSQLLintRuntimeHelper.downloadRuntime(tsqllintInstallDirectory);
+      const download: Promise<string> = this._downloadRuntime(tsqllintInstallDirectory);
 
       download
         .then((path: string) => {
-          return this.unzipRuntime(path, tsqllintInstallDirectory);
+          return this._unzipRuntime(path, tsqllintInstallDirectory);
         })
         .then((installDir: string) => {
           console.log("Installation of TSQLLint Runtime Complete");
@@ -65,14 +66,15 @@ export default class TSQLLintRuntimeHelper {
         .catch((error: Error) => {
           return reject(error);
         });
+
+      return null;
     });
   }
 
-  private static downloadRuntime(installDirectory: string): Promise<string> {
+  private _downloadRuntime(installDirectory: string): Promise<string> {
     const urlBase = `https://github.com/tsqllint/tsqllint/releases/download/${this._tsqllintVersion}`;
-    const downloadUrl = `${urlBase}/${TSQLLintRuntimeHelper._runTime}.tgz`;
-    const downloadFilePath = `${installDirectory}/${TSQLLintRuntimeHelper._runTime}.tgz`;
-    const downloadPath = `${installDirectory}/${TSQLLintRuntimeHelper._runTime}.tgz`;
+    const downloadUrl = `${urlBase}/${this._runTime}.tgz`;
+    const downloadFilePath = `${installDirectory}/${this._runTime}.tgz`;
 
     return new Promise((resolve, reject) => {
       console.log(`Installing TSQLLint Runtime: ${downloadUrl}`);
@@ -84,7 +86,7 @@ export default class TSQLLintRuntimeHelper {
       const file = fs.createWriteStream(downloadFilePath);
 
       https
-        .get(downloadUrl, (response: unknown) => {
+        .get(downloadUrl, (response) => {
           const length = Number(response.headers["content-length"]);
           response.pipe(file);
           process.stdout.write("Downloading...");
@@ -112,31 +114,33 @@ export default class TSQLLintRuntimeHelper {
 
           file.on("finish", () => {
             file.close();
-            resolve(downloadPath);
+            resolve(downloadFilePath);
           });
         })
-        .on("response", (res: unknown) => {
+        .on("response", (res) => {
           if (res.statusCode !== 200) {
-            fs.unlinkSync(downloadPath);
+            fs.unlinkSync(downloadFilePath);
             return reject(
               new Error(`There was a problem downloading the TSQLLint Runtime. Reload VS Code to try again`)
             );
           }
+
+          return resolve();
         })
         .on("error", (err: Error) => {
-          fs.unlinkSync(downloadPath);
+          fs.unlinkSync(downloadFilePath);
           reject(err);
         });
     });
   }
 
-  private unzipRuntime(path: string, tsqllintInstallDirectory: string) {
+  private _unzipRuntime(path: string, tsqllintInstallDirectory: string) {
     return new Promise((resolve, reject) => {
       decompress(path, `${tsqllintInstallDirectory}`, {
         plugins: [decompressTargz()]
       })
         .then(() => {
-          TSQLLintRuntimeHelper._tsqllintToolsPath = tsqllintInstallDirectory;
+          this._tsqllintToolsPath = tsqllintInstallDirectory;
           return resolve(tsqllintInstallDirectory);
         })
         .catch((err: Error) => {

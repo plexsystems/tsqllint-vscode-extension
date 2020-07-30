@@ -1,5 +1,4 @@
 "use strict";
-
 import {
   createConnection,
   Diagnostic,
@@ -13,14 +12,13 @@ import {
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { ChildProcess, spawn } from "child_process";
-
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import * as uid from "uid-safe";
-import TSQLLintRuntimeHelper from "./TSQLLintRuntimeHelper";
 import { ITsqlLintError, parseErrors } from "./parseError";
 import { getCommands, registerFileErrors } from "./commands";
+import { TSQLLintRuntimeHelper } from "./TSQLLintRuntimeHelper";
 
 const applicationRoot = path.parse(process.argv[1]);
 
@@ -39,50 +37,9 @@ connection.onInitialize(
 
 connection.onCodeAction(getCommands);
 
-documents.onDidChangeContent((change: { document: TextDocument }) => {
-  validateBuffer(change.document);
-});
-
 const toolsHelper: TSQLLintRuntimeHelper = new TSQLLintRuntimeHelper(applicationRoot.dir);
 
-function lintBuffer(fileUri: string, callback: (error: Error, result: string[]) => void): void {
-  toolsHelper
-    .tsqllintRuntime()
-    .then((toolsPath: string) => {
-      const childProcess = spawnChildProcess(toolsPath, fileUri);
-      parseChildProcessResult(childProcess, callback);
-    })
-    .catch((error: Error) => {
-      throw error;
-    });
-}
-
-function parseChildProcessResult(childProcess: ChildProcess, callback: (error: Error, result: string[]) => void) {
-  let result: string;
-  childProcess.stdout.on("data", (data: string) => {
-    result += data;
-  });
-
-  childProcess.stderr.on("data", (data: string) => {
-    console.error(`stderr: ${data}`);
-  });
-
-  childProcess.on("close", () => {
-    const list: string[] = result.split("\n");
-    const resultsArr: string[] = [];
-
-    list.forEach((element) => {
-      const index = element.indexOf("(");
-      if (index > 0) {
-        resultsArr.push(element.substring(index, element.length - 1));
-      }
-    });
-
-    callback(null, resultsArr);
-  });
-}
-
-function spawnChildProcess(toolsPath: string, fileUri: string) {
+const spawnChildProcess = (toolsPath: string, fileUri: string) => {
   let childProcess: ChildProcess;
 
   switch (os.type()) {
@@ -109,20 +66,67 @@ function spawnChildProcess(toolsPath: string, fileUri: string) {
   }
 
   return childProcess;
-}
+};
 
-function buildTempFilePath(textDocument: TextDocument) {
+const parseChildProcessResult = (childProcess: ChildProcess, callback: (error: Error, result: string[]) => void) => {
+  let result: string;
+  childProcess.stdout.on("data", (data: string) => {
+    result += data;
+  });
+
+  childProcess.stderr.on("data", (data: string) => {
+    // eslint-disable-next-line no-console
+    console.error(`stderr: ${data}`);
+  });
+
+  childProcess.on("close", () => {
+    const list: string[] = result.split("\n");
+    const resultsArr: string[] = [];
+
+    list.forEach((element) => {
+      const index = element.indexOf("(");
+      if (index > 0) {
+        resultsArr.push(element.substring(index, element.length - 1));
+      }
+    });
+
+    callback(null, resultsArr);
+  });
+};
+
+const lintBuffer = (fileUri: string, callback: (error: Error, result: string[]) => void): void => {
+  toolsHelper
+    .tsqllintRuntime()
+    .then((toolsPath: string) => {
+      const childProcess = spawnChildProcess(toolsPath, fileUri);
+      parseChildProcessResult(childProcess, callback);
+    })
+    .catch((error: Error) => {
+      throw error;
+    });
+};
+
+const buildTempFilePath = (textDocument: TextDocument) => {
   const ext = path.extname(textDocument.uri) || ".sql";
   const name = uid.sync(18) + ext;
   return path.join(os.tmpdir(), name);
-}
+};
 
-function validateBuffer(textDocument: TextDocument): void {
+const validateBuffer = (textDocument: TextDocument): void => {
   const tempFilePath: string = buildTempFilePath(textDocument);
   fs.writeFileSync(tempFilePath, textDocument.getText());
 
   lintBuffer(tempFilePath, (error: Error, lintErrorStrings: string[]) => {
-    if (error) {
+    const toDiagnostic = (lintError: ITsqlLintError): Diagnostic => {
+      return {
+        severity: DiagnosticSeverity.Error,
+        range: lintError.range,
+        message: lintError.message,
+        source: `TSQLLint: ${lintError.rule}`
+      };
+    };
+
+    if (error !== undefined && error !== null) {
       registerFileErrors(textDocument, []);
       throw error;
     }
@@ -132,17 +136,13 @@ function validateBuffer(textDocument: TextDocument): void {
     const diagnostics = errors.map(toDiagnostic);
 
     connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
-    function toDiagnostic(lintError: ITsqlLintError): Diagnostic {
-      return {
-        severity: DiagnosticSeverity.Error,
-        range: lintError.range,
-        message: lintError.message,
-        source: `TSQLLint: ${lintError.rule}`
-      };
-    }
 
     fs.unlinkSync(tempFilePath);
   });
-}
+};
+
+documents.onDidChangeContent((change: { document: TextDocument }) => {
+  validateBuffer(change.document);
+});
 
 connection.listen();

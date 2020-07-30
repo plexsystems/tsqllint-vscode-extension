@@ -6,12 +6,15 @@ export interface ITsqlLintError {
   rule: string;
 }
 
-export function parseErrors(docText: string, errorStrings: string[]): ITsqlLintError[] {
-  const lines = docText.split("\n");
-  const lineStarts = lines.map((line) => line.match(/^\s*/)[0].length);
-  return errorStrings.map(parseError).filter(isValidError);
+const isValidError = (error: ITsqlLintError): boolean => {
+  return error.range.start.line >= 0;
+};
 
-  function parseError(errorString: string): ITsqlLintError {
+export const parseErrors = (docText: string, errorStrings: string[]): ITsqlLintError[] => {
+  const lines = docText.split("\n");
+  const lineStarts = lines.map((line) => /^\s*/.exec(line)[0].length);
+
+  const parseError = (errorString: string): ITsqlLintError => {
     const validationError: string[] = errorString.split(":");
     const positionStr: string = validationError[0].replace("(", "").replace(")", "");
     const positionArr: number[] = positionStr.split(",").map(Number);
@@ -30,9 +33,7 @@ export function parseErrors(docText: string, errorStrings: string[]): ITsqlLintE
       message: validationError[2].trim(),
       rule: validationError[1].trim()
     };
-  }
-}
+  };
 
-function isValidError(error: ITsqlLintError): boolean {
-  return error.range.start.line >= 0;
-}
+  return errorStrings.map(parseError).filter(isValidError);
+};
