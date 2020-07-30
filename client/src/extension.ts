@@ -1,11 +1,13 @@
 "use strict";
 
 import * as path from "path";
+// eslint-disable-next-line import/no-unresolved
 import { ExtensionContext, workspace } from "vscode";
+// eslint-disable-next-line import/no-unresolved
 import * as vscode from "vscode";
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from "vscode-languageclient";
 
-export function activate(context: ExtensionContext) {
+export const activate = (context: ExtensionContext) => {
   const debugOptions = { execArgv: ["--nolazy", "--inspect=6009"] };
   const serverModule = context.asAbsolutePath(path.join("server", "out", "server.js"));
 
@@ -25,14 +27,14 @@ export function activate(context: ExtensionContext) {
   const client = new LanguageClient("tsqllint", "TSQLLint", serverOptions, clientOptions);
   client.registerProposedFeatures();
 
-  function applyTextEdits(uri: string, documentVersion: number, edits: vscode.TextEdit[]) {
+  const applyTextEdits = (uri: string, documentVersion: number, edits: vscode.TextEdit[]) => {
     const textEditor = vscode.window.activeTextEditor;
-    if (textEditor && textEditor.document.uri.toString() === uri) {
+    if (textEditor !== undefined && textEditor.document.uri.toString() === uri) {
       if (textEditor.document.version !== documentVersion) {
-        vscode.window.showInformationMessage(`SqlLint fixes are outdated and can't be applied to the document.`);
+        void vscode.window.showInformationMessage(`SqlLint fixes are outdated and can't be applied to the document.`);
       }
 
-      textEditor
+      void textEditor
         .edit((mutator) => {
           for (const edit of edits) {
             mutator.replace(client.protocol2CodeConverter.asRange(edit.range), edit.newText);
@@ -40,14 +42,14 @@ export function activate(context: ExtensionContext) {
         })
         .then((success) => {
           if (!success) {
-            vscode.window.showErrorMessage(
+            void vscode.window.showErrorMessage(
               "Failed to apply SqlLint fixes to the document. " +
                 "Please consider opening an issue with steps to reproduce."
             );
           }
         });
     }
-  }
+  };
 
   context.subscriptions.push(client.start(), vscode.commands.registerCommand("_tsql-lint.change", applyTextEdits));
-}
+};
