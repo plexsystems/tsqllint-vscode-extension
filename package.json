@@ -62,7 +62,10 @@
     "vsce": "^1.77.0"
   },
   "scripts": {
-    "lint": "tslint -c ./tslint.json '**/src/**/*.ts'",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:style": "prettier . --check",
+    "format": "prettier . --write",
     "build-changelog": "conventional-changelog -i CHANGELOG.md -u -s -r 0 && git add CHANGELOG.md",
     "vscode:prepublish": "cd client && npm run update-vscode && cd .. && npm run compile",
     "compile:client": "tsc -p ./client/tsconfig.json",

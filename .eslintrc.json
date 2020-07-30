@@ -3,5 +3,16 @@
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "project": ["./client/tsconfig.json", "./server/tsconfig.json"]
+  },
+  "settings": {
+    "import/parsers": {
+      "@typescript-eslint/parser": [".ts"]
+    },
+    "import/resolver": {
+      "node": {
+        "paths": ["client/src", "server/src"],
+        "extensions": [".js", ".ts"]
+      }
+    }
   }
 }
