@@ -4,6 +4,8 @@
 ### Changed
 * Create Plex fork
 * Update npm dependencies to latest versions
+* Apply linting fixes with ESLint
+* Update code style with Prettier
 
 ### Fixed
 * Clamp minimum line number index to 0
